@@ -95,7 +95,7 @@ class Node(DropItem, Item):
 
 	if self.device_type == "yRouter":
 	    if availableyRouters:
-		usedyRouters.append(availableyRouters.pop())
+		usedyRouters.append(availableyRouters.pop(0))
 		if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
 		    mainWidgets["drop"].commonDropArea.yRouterDrop.update()
 		if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
@@ -459,6 +459,7 @@ class Node(DropItem, Item):
         for edge in self.edges():
             edge.delete()
 
+	# TODO: ensure the particuluar yRouter is being moved in the list
 	if self.device_type == "yRouter":
 	    availableyRouters.append(usedyRouters.pop())
 	    mainWidgets["drop"].commonDropArea.yRouterDrop.update()

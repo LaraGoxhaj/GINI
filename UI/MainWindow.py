@@ -792,25 +792,70 @@ class MainWindow(Systray):
         if not self.client or not self.client.isConnected():
             self.startClient()
 
-	availableyRouters = Check()
-	y = 0
-	for yRouter in availableyRouters:
-	    # TODO: accept ifconfig parameters
-	    # "ifconfig add tun0 -dstip dst-ip -dstport portnum -addr IP_addr -hwaddr MAC
-	    yRouter.append("ifconfig add tun0 -dstip 192.167.%d.0 -dstport 0 -addr 0.0.0.0 -hwaddr fe:fd:01:0%d:00:00" % (y, y))
-	    y+=1
-	
 	self.popup.setWindowTitle(" ")
-        if len(availableyRouters) > 0:
-	    if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
-		mainWidgets["drop"].commonDropArea.yRouterDrop.update()
-	    if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
-		mainWidgets["drop"].netDropArea.yRouterDrop.update()
-	    text = "%d yRouters found." % len(availableyRouters)
-	    self.popup.setText(text)
+
+	found = 0
+	# removed = 0
+	# add yRouters to lists; assume all lists of yRouters are sorted
+	tempList = Check().sort(key=lambda YunEntity: YunEntity.YunID)
+	i = 0
+	for yun in tempList:
+	    if len(yRouters) < (i+1):
+		yRouters.append(yun)
+		availableyRouters.append(yun)
+		found += 1
+	    else:
+		if yun.YunID > yRouters[i].YunID:
+		    if yRouters[i] in usedyRouters:
+			self.popup.setText("yRouter_%d is no longer available. Please stop the topology before attempting to discover new yRouters.", %(yRouters[i].YunID))
+			self.popup.show()
+			return
+			# TODO: instead, delete Node from topology, then from yRouters and availableyRouters list
+			# removed += 1
+		    else:
+			availableyRouters.remove(i)
+			yRouters.remove(i)
+			removed += 1
+		else if yun.YunID < yRouters[i].YunID:
+		    yRouters.insert(yun, i)
+		    where = 0
+		    for yRouter in availableyRouters:
+			if yRouter.YunID >= yRouters[i].YunID:
+			    break
+			else:
+			    where += 1
+		    availableyRouters.insert(yun, where)
+		    found += 1
+	    i += 1
+	tempList = []
+
+	# TODO: accept ifconfig parameters and attach to correct yRouter
+	# y = 0
+	# for yRouter in yRouters:
+	    # "ifconfig add tun0 -dstip dst-ip -dstport portnum -addr IP_addr -hwaddr MAC
+	    # yRouter.append("ifconfig add tun0 -dstip 192.168.0.%d -dstport 0 -addr 0.0.0.0 -hwaddr fe:fd:01:0%d:00:00" %(y, y))
+	    # y+=1
+	
+        if found == 0 && removed == 0:
+	    self.popup.setText("No yRouters found or removed.")
+	    self.popup.show()
 	else:
-             self.popup.setText("No yRouters found.")
-	self.popup.show()
+	    if found == 0:
+		text = "No yRouters found./n"
+	    else:
+		text = "%d yRouters found./n" %found
+	    if removed == 0:
+		text += "No yRouters removed."
+	    else:
+		text += "%d yRouters removed." %removed
+	    self.popup.setText(text)
+	    self.popup.show()
+
+            if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
+                mainWidgets["drop"].commonDropArea.yRouterDrop.update()
+            if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
+                mainWidgets["drop"].netDropArea.yRouterDrop.update()
+
 	return
 
     def arrange(self):

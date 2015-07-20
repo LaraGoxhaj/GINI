@@ -46,5 +46,6 @@ mainWidgets = {"app":None,
 
 defaultOptions = {"palette":None}
 
+yRouters = []
 availableyRouters = []
 usedyRouters = []
