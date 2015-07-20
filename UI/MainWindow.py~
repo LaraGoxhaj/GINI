@@ -776,6 +776,18 @@ class MainWindow(Systray):
         """
         self.configWindow.show()
 
+    def Check(self):
+	Yuns = []
+	i = 1
+	while i < 4:
+	    if i == 1:
+		j = 1
+	    else:
+		j = 0
+	    Yuns.append(YunEntity(i, 0, 3, j))
+	    i += 1
+	return Yuns
+
     def discover(self):
         """
         Add yRouters within range of topology
@@ -808,7 +820,7 @@ class MainWindow(Systray):
 	    else:
 		if yun.ID > yRouters[i].ID:
 		    if yRouters[i] in usedyRouters:
-			self.popup.setText("yRouter_%d is no longer available. Please stop the topology before attempting to discover new yRouters." %(yRouters[i].ID))
+			self.popup.setText("yRouter_%d is no longer available. Please stop the topology before attempting to discover new yRouters." %(yRouters[i].YunID))
 			self.popup.show()
 			return
 			# TODO: instead, delete Node from topology, then from yRouters and availableyRouters list
