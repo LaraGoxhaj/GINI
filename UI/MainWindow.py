@@ -794,11 +794,12 @@ class MainWindow(Systray):
 
 	self.popup.setWindowTitle(" ")
 
+	tempList = ServerAPI().CheckTest()
+	tempList.sort(key=lambda YunEntity: YunEntity.ID)
+
 	found = 0
 	removed = 0
 	# add yRouters to lists; assume all lists of yRouters are sorted
-	tempList = Check()
-	tempList.sort(key=lambda YunEntity: YunEntity.ID)
 	i = 0
 	for yun in tempList:
 	    if len(yRouters) < (i+1):
@@ -811,7 +812,7 @@ class MainWindow(Systray):
 			self.popup.setText("yRouter_%d is no longer available. Please stop the topology before attempting to discover new yRouters." %(yRouters[i].ID))
 			self.popup.show()
 			return
-			# TODO: instead, delete Node from topology, then from yRouters and availableyRouters list
+			# TODO: instead, delete Node from topology, then from usedyRouters and yRouters lists
 			# removed += 1
 		    else:
 			availableyRouters.remove(i)
@@ -842,9 +843,9 @@ class MainWindow(Systray):
 	    self.popup.show()
 	else:
 	    if found == 0:
-		text = "No yRouters found./n"
+		text = "No yRouters found.\n"
 	    else:
-		text = "%d yRouters found./n" %found
+		text = "%d yRouters found.\n" %found
 	    if removed == 0:
 		text += "No yRouters removed."
 	    else:

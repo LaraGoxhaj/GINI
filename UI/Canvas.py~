@@ -186,6 +186,7 @@ class View(QtGui.QGraphicsView):
 
                 def isValid(dest, source):
                     if dest.device_type in connection_rule[source.device_type]:
+			itemTypes = nodeTypes[self.device_type]
                         if dest.device_type == "UML":
                             if len(dest.edges()) == 1:
                                 return "UML cannot have more than one connection!"
