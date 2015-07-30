@@ -1,8 +1,8 @@
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
-from Database import *
 from yrouterAPI import *
 from XmlAPI import *
+from Database import *
 
 class YunEntity:
 	def __init__(self, ID, CurrRaw, MaxRaw, Special):
@@ -22,6 +22,7 @@ class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
 
 class ServerAPI:
+
 	# Returns an array of all yuns available
 	def Check(self):
 		YunIDs = database.GetAllYuns()
@@ -34,16 +35,7 @@ class ServerAPI:
 				if(YunID == AvailYun[0]):
 					Yuns[-1].CurrRaw = AvailYun[1]
 					break
-		return Yuns
 
-	def CheckTest(self):
-		Yuns = []
-		i = 1
-		k = 1
-		while i < 4:
-			Yuns.append(YunEntity(i, 0, 3, k))
-			k = 0
-			i += 1
 		return Yuns
 
     # Kills all instances of the topology from the Yuns and updates the database
@@ -52,19 +44,19 @@ class ServerAPI:
 		TopID = database.GetTopologyID(HostIP)
 		for Yun in YunsWithRaw:
 			YunIP = database.GetYunIP(Yun)
-			print "Deleting Raw Interface on Yun%d with IP address %s" %(Yun, YunIP)
+			print "Delete: Deleting Raw Interface on Yun%d with IP address %s" %(Yun, YunIP)
 			delete_raw_iface(TopID, YunIP)
 
 		YunsUsed = database.GetYunsUsed(HostIP)
 
 		for Yun in YunsUsed:
 			YunIP = database.GetYunIP(Yun)
-			print "Killing yRouter on Yun%d with IP address %s" %(Yun, YunIP)
+			print "Delete: Killing yRouter on Yun%d with IP address %s" %(Yun, YunIP)
 			kill_yrouter(TopID, YunIP)
 
 		database.DeleteInterfaces(HostIP)
 		database.DeleteTopology(HostIP)
-		return 1
+		return "Delete: Topology %d deleted"%TopID
 
     # Deploys Topology on Yuns and Updates the database
 	def Create(self, XMLstring, HostIP):
@@ -72,19 +64,39 @@ class ServerAPI:
 		XML = XML_Top(XMLstring)
 		XML.Parse()
 
-		# Check if we have enough raw interfaces
-		Yuns = database.Check()
+		# Validation
+		Yuns = self.Check()
 		for XML_Yun in XML.Yuns:
-			for RawIface in XML_Yun.RawIfaces:
-				for Yun in Yuns:
-					if(XML_Yun.ID == Yun.ID):
-						if(Yun.CurrRaw >= Yun.MaxRaw):
-							return -1
+			# Find Yun object from the Yuns array
+			Yun = None
+			for CurrYun in Yuns:
+				if(XML_Yun.ID == CurrYun.ID):
+					Yun = CurrYun
+					break
+
+			if( (len(XML_Yun.BBIfaces) > 0) and (Yun.Special != 1)):
+				return "Create: Only Mesh Portals can have BBiface"
+
+			RawIfacesLen = len(XML_Yun.RawIfaces)
+			if(RawIfacesLen > RawTopMax):
+				return "Cannot have more than %d wlan interfaces on a given Yun"%RawTopMax
+
+			if(Yun.CurrRaw + RawIfacesLen > Yun.MaxRaw):
+				return "Create: Not enough wlan interfaces on Station %d"%Yun.ID
+
+		# Make sure the user doesn't have an existing topology deployed
+		if(database.GetTopologyID(HostIP) != None):
+			return "Create: Please delete the exising topology before creating a new one"
 
 		database.AddTopology(HostIP)
 		TopID = database.GetTopologyID(HostIP)
 
 		for Yun in XML.Yuns:
+
+			# TODO Fix this: currently expects DestIface to be a key and returns an error when its zero
+			#for Interface in Yun.BBIfaces:
+			#	database.AddInterface("BB", Interface.num, TopID, Yun.ID, Interface.DestIface)
+
 			for Interface in Yun.TunIfaces:
 				database.AddInterface("tun", Interface.num, TopID, Yun.ID, Interface.DestID)
 
@@ -94,34 +106,39 @@ class ServerAPI:
 		# Run yRouters
 		for Yun in XML.Yuns:
 			interfaces = ifaces(TopID, database.GetYunIP(Yun.ID))
-			for tuniface in Yun.TunIfaces:
-				dst_ip = database.GetYunIP(tuniface.DestID)
-				dst_iface = database.GetDestInterface(Yun.ID, tuniface.DestID, TopID)
-
-				if(dst_iface == None):
-					print "Error: Dst Iface not found"
-					return -1
-				interfaces.AddTunIface(tun_iface(tuniface.num, dst_ip, dst_iface, tuniface.vIP, tuniface.vHW, tuniface.routes))
 
 			for BBiface in Yun.BBIfaces:
 				dst_ip = HostIP
 				dst_iface = BBiface.DestIface
 				interfaces.AddTunIface(tun_iface(BBiface.num, dst_ip, dst_iface, BBiface.vIP, BBiface.vHW, BBiface.routes))
 
+			for tuniface in Yun.TunIfaces:
+				dst_ip = database.GetYunIP(tuniface.DestID)
+				dst_iface = database.GetDestInterface(Yun.ID, tuniface.DestID, TopID)
+				if(dst_iface == None):
+					print "Error: Dst Iface not found"
+					return "Create: No interface on Station%d for interface on Station%d"%(tuniface.DestID, Yun.ID)
+
+				interfaces.AddTunIface(tun_iface(tuniface.num, dst_ip, dst_iface, tuniface.vIP, tuniface.vHW, tuniface.routes))
+
 			for rawIF in Yun.RawIfaces:
 				interfaces.AddRawIface(rawIF)
 
 			run_yrouter(interfaces, Yun.ID)
 
-		return 1
+		return "Create: Topology %d deployed" %TopID
 
+# TODO Put RawTopMax and database into ServerAPI class
+
+# Maximum number of raw interfaces that a topology can deploy on a given Yun
+RawTopMax = 1
 # Create database instance
 database = YunServerDB("YunServer.db")
 # Create XMLRPC server
-server = SimpleXMLRPCServer(("127.0.0.1", 8000),
+server = SimpleXMLRPCServer(("localhost", 30000),
                             requestHandler=RequestHandler)
 server.register_introspection_functions()
 # Register functions
 server.register_instance(ServerAPI())
 # Run the server's main loop
-#server.serve_forever()
+server.serve_forever()

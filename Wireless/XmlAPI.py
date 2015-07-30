@@ -41,32 +41,19 @@ class XML_Yun:
 
 class XML_Top:
     def __init__(self, name):
-        self.xmlD = etree.fromstring(name)
-        self.root = self.xmlD.getroot()
+        self.root = etree.fromstring(name)
         self.Yuns = []
 
     def Parse(self):
         for Yun in self.root.findall('Yun'):
             ID = int(Yun.find('ID').text)
             nYun = XML_Yun(ID)
-
-            for Interface in Yun.findall('Interface'):
-                InterfaceNo = int(Interface.find('InterfaceNo').text)
-                DestYunID = int(Interface.find('DestYunID').text)
-                IPAddress = Interface.find('IPAddress').text
-                HWAddress = Interface.find('HWAddress').text
-                TunIface = XML_tuniface(InterfaceNo, DestYunID, IPAddress, HWAddress)
-                for REntry in Interface.findall('REntry'):
-                    Net = REntry.find('Net').text
-                    NetMask = REntry.find('NetMask').text
-                    NextHop = REntry.find('NextHop').text
-                    route = rentry(Net, NetMask, NextHop)
-                    TunIface.AddRoute(route)
-
-                nYun.AddTunIface(TunIface)
+            index = 0
 
             for BBInterface in Yun.findall('BBInterface'):
-                InterfaceNo = int(BBInterface.find('InterfaceNo').text)
+                #InterfaceNo = int(BBInterface.find('InterfaceNo').text)
+                InterfaceNo = index
+                index = index + 1
                 DestIface = int(BBInterface.find('DestIface').text)
                 IPAddress = BBInterface.find('IPAddress').text
                 HWAddress = BBInterface.find('HWAddress').text
@@ -80,8 +67,29 @@ class XML_Top:
 
                 nYun.AddBBIface(BBIface)
 
+            for Interface in Yun.findall('Interface'):
+                #InterfaceNo = int(Interface.find('InterfaceNo').text)
+                InterfaceNo = index
+                index = index + 1
+                DestYunID = int(Interface.find('DestYunID').text)
+                IPAddress = Interface.find('IPAddress').text
+                HWAddress = Interface.find('HWAddress').text
+                TunIface = XML_tuniface(InterfaceNo, DestYunID, IPAddress, HWAddress)
+                for REntry in Interface.findall('REntry'):
+                    Net = REntry.find('Net').text
+                    NetMask = REntry.find('NetMask').text
+                    if(NetMask == None):
+                        NetMask = "255.255.255.0"
+                    NextHop = REntry.find('NextHop').text
+                    route = rentry(Net, NetMask, NextHop)
+                    TunIface.AddRoute(route)
+
+                nYun.AddTunIface(TunIface)
+
             for RawInterface in Yun.findall('Raw_Interface'):
-                InterfaceNo = int(RawInterface.find('InterfaceNo').text)
+                #InterfaceNo = int(RawInterface.find('InterfaceNo').text)
+                InterfaceNo = index
+                index = index + 1
                 IPAddress = RawInterface.find('IPAddress').text
                 RawIface = raw_iface(InterfaceNo, IPAddress)
                 for REntry in RawInterface.findall('REntry'):
