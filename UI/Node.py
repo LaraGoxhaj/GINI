@@ -89,8 +89,9 @@ class Node(DropItem, Item):
 
 	if self.device_type == "yRouter":
 	    if availableyRouters:
-		usedyRouters.append(availableyRouters.pop(0))
 		index = self.findNextIndex(itemTypes[self.device_type])
+		usedyRouters.append(availableyRouters.pop(0))
+		itemTypes[self.device_type] = len(usedyRouters)
 		if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
 		    mainWidgets["drop"].commonDropArea.yRouterDrop.update()
 		if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
@@ -147,12 +148,6 @@ class Node(DropItem, Item):
         """
         Find the next index for the node's type.
         """
-	itemTypes = nodeTypes[self.device_type]
-
-	if self.device_type == "yRouter":
-	    itemTypes[self.device_type] = len(usedyRouters)
-	    return usedyRouters[-1].ID
-
         firstPass = True
         newIndex = index + 1
         if newIndex > 126:
@@ -468,7 +463,6 @@ class Node(DropItem, Item):
 	if self.device_type == "yRouter":
 
 	    availableyRouters.append(usedyRouters.pop())
-	    availableyRouters.sort(key=lambda YunEntity: YunEntity.ID)
 	    
 	    if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
 		mainWidgets["drop"].commonDropArea.yRouterDrop.update()

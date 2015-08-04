@@ -141,4 +141,4 @@ server.register_introspection_functions()
 # Register functions
 server.register_instance(ServerAPI())
 # Run the server's main loop
-#server.serve_forever()
+server.serve_forever()
