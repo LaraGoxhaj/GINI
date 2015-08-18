@@ -38,7 +38,7 @@ class Interfaceable(Device):
         if self.device_type == "Wireless_access_point":
             screen += "WAP_%d" % self.getID()
         elif self.device_type == "yRouter":
-	    screen += "yR_%d" % self.getID()
+	    screen += "yRouter_%d" % self.getID()
 	else:
             name = self.getName()
             pid = mainWidgets["tm"].getPID(name)

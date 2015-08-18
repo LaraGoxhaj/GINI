@@ -16,12 +16,6 @@ class yRouter(Router):
         # by default, auto compute routing table is off
         self.auto=0
 
-        #wireless properties
-        self.properties[QtCore.QString("destIP")]=""
-        self.properties[QtCore.QString("destPort")]=""
-        self.properties[QtCore.QString("ip")]=""
-        self.properties[QtCore.QString("mac")]=""
-
         self.interfaces.append({
             QtCore.QString("subnet"):QtCore.QString(""),
             QtCore.QString("mask"):QtCore.QString(""),

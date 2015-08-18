@@ -192,10 +192,14 @@ class View(QtGui.QGraphicsView):
                         elif dest.device_type == "REALM":
                             if len(dest.edges()) == 1:
                                 return "REALM cannot have more than one connection!"
-			elif dest.device_type == "yRouter" and source.device_type == "Subnet":
+			elif dest.device_type == "yRouter" and source.device_type == "Router":
 			    yid = dest.getID()
 			    if not yRouters[yid]['Special']:
 				return "Cannot connect yRouter_%d to the host!" %yid
+			elif dest.device_type == "Router" and source.device_type == "yRouter":
+			    yid = source.getID()
+			    if not yRouters[yid]['Special']:
+				return "yRouter_%d cannot connect to the host!" %yid
                         elif dest.device_type == "Subnet":
                             if len(dest.edges()) == 2:
                                 return "Subnet cannot have more than two connections!"    
@@ -206,10 +210,6 @@ class View(QtGui.QGraphicsView):
                                 for edge in source.edges():
                                     if edge.getOtherDevice(source).device_type == "Subnet":
                                         return "Switch cannot have more than one Subnet!"
-			    elif source.device_type == "yRouter":
-				yid = source.getID()
-				if not yRouters[yid]['Special']:
-				    return "yRouter_%d cannot connect to the host!" %yid
                         return True
                     return False
     

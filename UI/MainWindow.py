@@ -510,10 +510,6 @@ class MainWindow(Systray):
                 x = item.pos().x()
                 y = item.pos().y()
                 self.client.send("mobile %s %d,%d" % (item.getName(), x, y))
-	    if item.device_type == "yRouter":
-		x = item.pos().x()
-		y = item.pos().y()
-		self.client.send("yRouter %s %d,%d" % (item.getName(), x, y))
         self.client.process("start " + xmlFile)
 
         self.running = True
@@ -551,8 +547,6 @@ class MainWindow(Systray):
                 continue
             if item.device_type == "Router":
                 item.stop()
-	    if item.device_type == "yRouter":
-		item.delete()
             if item.status:
                 activeDevices = True
 

@@ -245,7 +245,7 @@ class Compiler:
             p_types["energy"]=("power", "PSM", "energy_amount")
             p_types["mobility"]=("m_type", "ran_max", "ran_min")
             p_types["mac_layer"]=("mac_type", "trans")
-                
+ 
             for item in p_types:        
                 self.output.write("\t<"+item+">\n")
                 for p in p_types[item]:
@@ -285,11 +285,6 @@ class Compiler:
         for yRouter in self.compile_list["yRouter"]:
             self.output.write("<vyr name=\"" + yRouter.getName() + "\">\n")
 
-            edges = yRouter.edges()
-            if len(edges) < 1:
-                self.errors += 1
-                self.generateConnectionWarning(yRouter, 2)
-
             self.output.write("\t<netif_yun>\n")
 
             interface = yRouter.getInterface()
@@ -301,9 +296,9 @@ class Compiler:
 
         self.output.write("</vyr>\n\n")
 
-        subnet = yRouter.getInterfaceProperty("subnet")
-        mask = yRouter.getInterfaceProperty("mask")
-        for edge in edges:
+	subnet = yRouter.getInterfaceProperty("subnet")
+	mask = yRouter.getInterfaceProperty("mask")
+	for edge in edges:
             target = edge.getOtherDevice(yRouter)
             target.setInterfaceProperty("subnet", subnet, yRouter)
             target.setInterfaceProperty("mask", mask, yRouter)
@@ -562,9 +557,9 @@ class Compiler:
         """
         Clear all route tables of interfaceable devices.
         """
-#	for interfaceable in self.compile_list["yRouter"]:
-#	    interfaceable.emptyAdjacentLists()
-#	    interfaceable.emptyRouteTable()
+	for interfaceable in self.compile_list["yRouter"]:
+	    interfaceable.emptyAdjacentLists()
+	    interfaceable.emptyRouteTable()
 
         for interfaceable in self.compile_list["Router"]:
             interfaceable.emptyAdjacentLists()
