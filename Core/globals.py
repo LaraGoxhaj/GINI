@@ -36,6 +36,7 @@ mainWidgets = {"app":None,
                "canvas":None,
                "tab":None,
                "popup":None,
+	       "inputDialog":None,
                "log":None,
                "tm":None,
                "properties":None,
@@ -46,6 +47,6 @@ mainWidgets = {"app":None,
 
 defaultOptions = {"palette":None}
 
-yRouters = []
+yRouters = {}		# indexed by yun ID
 availableyRouters = []
-usedyRouters = []
+usedyRouters = {}	# indexed by topology index

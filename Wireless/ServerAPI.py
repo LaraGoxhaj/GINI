@@ -4,6 +4,9 @@ from yrouterAPI import *
 from XmlAPI import *
 from Database import *
 
+ServerIP = "localhost"
+ServerPort = 50000
+
 class YunEntity:
 	def __init__(self, ID, CurrRaw, MaxRaw, Special):
 		self.ID = ID
@@ -135,10 +138,10 @@ RawTopMax = 1
 # Create database instance
 database = YunServerDB("YunServer.db")
 # Create XMLRPC server
-server = SimpleXMLRPCServer(("localhost", 30000),
+server = SimpleXMLRPCServer((ServerIP, ServerPort),
                             requestHandler=RequestHandler)
 server.register_introspection_functions()
 # Register functions
 server.register_instance(ServerAPI())
 # Run the server's main loop
-#server.serve_forever()
+server.serve_forever()

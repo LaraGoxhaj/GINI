@@ -272,7 +272,7 @@ class Compiler:
                 subnet = yRouter.getInterfaceProperty("subnet")
                 if not subnet:
                     subnet = "192.168.%d.0" % (256 - yRouter.getID())
-                    router.setInterfaceProperty("subnet", subnet)
+                    yRouter.setInterfaceProperty("subnet", subnet)
                 subnet = str(subnet).rsplit(".", 1)[0]
                 yRouter.setInterfaceProperty("mask", "255.255.255.255.0")
                 yRouter.setInterfaceProperty("ipv4", "%s.%d" % (subnet, yRouter.getID()))

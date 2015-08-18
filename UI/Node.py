@@ -86,28 +86,25 @@ class Node(DropItem, Item):
         self.edgeList = []
         DropItem.__init__(self, itemType)
 	itemTypes = nodeTypes[self.device_type]
+	index = self.findNextIndex(itemTypes[self.device_type])
+
+	if index == 0:
+	    if self.device_type == "yRouter":
+		popup = mainWidgets["popup"]
+		popup.setWindowTitle("Cannot add yRouter")
+		popup.setText("There are no yRouters available to add to the topology!")
+		popup.show()
+		return
+	    print "Node.__init__: I have raised an exception."
+	    raise Exception
 
 	if self.device_type == "yRouter":
-	    if availableyRouters:
-		index = self.findNextIndex(itemTypes[self.device_type])
-		usedyRouters.append(availableyRouters.pop(0))
-		itemTypes[self.device_type] = len(usedyRouters)
-		if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
-		    mainWidgets["drop"].commonDropArea.yRouterDrop.update()
-		if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
-	    	    mainWidgets["drop"].netDropArea.yRouterDrop.update()
-	    else:
-	        itemTypes[self.device_type] = len(availableyRouters)
-                popup = mainWidgets["popup"]
-                popup.setWindowTitle("Cannot add yRouter")
-	        popup.setText("There are no yRouters available to add to the topology!")
-                popup.show()
-	        return
-	else:
-	    index = self.findNextIndex(itemTypes[self.device_type])
-            if index == 0:
-		print "Node.__init__: I have raise an exception."
-		raise Exception
+	    yRouter = availableyRouters.pop(0)
+	    usedyRouters[index] = yRouter
+	    if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
+		mainWidgets["drop"].commonDropArea.yRouterDrop.update()
+	    if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
+		mainWidgets["drop"].netDropArea.yRouterDrop.update()
 	
 	
         name = self.device_type + "_%d" % index
@@ -148,21 +145,27 @@ class Node(DropItem, Item):
         """
         Find the next index for the node's type.
         """
-        firstPass = True
-        newIndex = index + 1
-        if newIndex > 126:
-	    newIndex = 1
-            firstPass = False
-        scene = mainWidgets["canvas"].scene()
-        while scene.findItem(self.device_type + "_%d" % newIndex) or newIndex == index:
-	    newIndex += 1
-	    if newIndex > 126:
-                if not firstPass:
-               	    return 0
-                newIndex = 1
-                firstPass = False
-        itemTypes = nodeTypes[self.device_type]
-        itemTypes[self.device_type] = newIndex
+	itemTypes = nodeTypes[self.device_type]
+	if self.device_type == "yRouter":
+	    if not availableyRouters:
+		return 0
+	    newIndex = availableyRouters[0]['ID']
+	    itemTypes[self.device_type] = len(usedyRouters) + 1
+	else:
+	    firstPass = True
+            newIndex = index + 1
+            if newIndex > 126:
+		newIndex = 1
+        	firstPass = False
+            scene = mainWidgets["canvas"].scene()
+            while scene.findItem(self.device_type + "_%d" % newIndex) or newIndex == index:
+		newIndex += 1
+		if newIndex > 126:
+                    if not firstPass:
+               		return 0
+                    newIndex = 1
+                    firstPass = False
+            itemTypes[self.device_type] = newIndex
         return newIndex
             
     def setIndex(self, index):
@@ -459,11 +462,13 @@ class Node(DropItem, Item):
         for edge in self.edges():
             edge.delete()
 
-	# TODO: ensure the particuluar yRouter is being moved in the list
 	if self.device_type == "yRouter":
+	    index = self.getID()
+	    yRouter = usedyRouters[index]
+	    availableyRouters.append(yRouter)
+	    availableyRouters.sort(key=lambda YunEntity: YunEntity['ID'])
+	    del usedyRouters[index]
 
-	    availableyRouters.append(usedyRouters.pop())
-	    
 	    if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
 		mainWidgets["drop"].commonDropArea.yRouterDrop.update()
 	    if mainWidgets["drop"].netDropArea.yRouterDrop is not None:

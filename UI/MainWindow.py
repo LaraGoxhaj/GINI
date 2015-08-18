@@ -22,7 +22,7 @@ from TabWidget import *
 from Tutorial import *
 from TaskManagerWindow import *
 import Core.globals
-from Wireless.ServerAPI import *
+from Wireless.ClientAPI import *
 
 class MainWindow(Systray):
     
@@ -37,6 +37,9 @@ class MainWindow(Systray):
         self.expansions = 0
         self.client = None
         self.server = None
+	self.clientIP = None
+	self.clientPort = None
+	self.wgini_client = None
         self.running = False
         self.recovery = False
         mainWidgets["main"] = self
@@ -533,6 +536,10 @@ class MainWindow(Systray):
         if not self.client or not self.client.isConnected():
             self.startClient()
 
+	if self.wgini_client is not None:
+	    self.wgini_client.Delete(self.clientIP)
+	    self.wgini_client = None
+
         if self.recovery:
             self.recovery = False
             
@@ -544,6 +551,8 @@ class MainWindow(Systray):
                 continue
             if item.device_type == "Router":
                 item.stop()
+	    if item.device_type == "yRouter":
+		item.delete()
             if item.status:
                 activeDevices = True
 
@@ -776,13 +785,39 @@ class MainWindow(Systray):
         """
         self.configWindow.show()
 
+    def startWGINIServer(self):
+	"""
+	Start wireless GINI server
+	"""
+	if not self.server or self.server.poll() is not None:
+	    self.log.append("You must start the main server before you can connect to the wireless server!")
+	elif self.wgini_client is not None:
+	    self.log.append("Wireless GINI server already running!")
+	else:
+	    windowTitle = "Client data"
+	    labelText = "Enter your client IP and port number as \"IP:Port\":"
+	    text, ok = self.inputDialog.getText(self.inputDialog, windowTitle, labelText)
+
+	    if ok:
+		if not text:
+		    self.log.append("Nothing entered; wireless GINI server connection cancelled.")
+		else:
+		    ipport = text.split(":")
+		    if not(len(ipport) == 2):
+			self.popup.setText("Invalid entry; wireless GINI server connection cancelled.")
+		    else:
+			self.clientIP = ipport[0]
+			self.clientPort = ipport[1]
+			self.wgini_client = wgini_client(self.clientIP, self.clientPort)
+			self.log.append("Wireless GINI server connected at %s" %text)
+    
     def discover(self):
         """
         Add yRouters within range of topology
         """
-        if not self.server or self.server.poll() != None:
-            self.log.append("You must start the server before you can discover any new devices!")
-            return
+	if self.wgini_client is None:
+	    self.log.append("You must start the wireless server before you can discover any new devices!")
+	    return
         if self.isRunning() and not self.recovery:
             self.log.append("A topology is currently running, please stop it before discovering any new devices!")
             return
@@ -792,73 +827,55 @@ class MainWindow(Systray):
         if not self.client or not self.client.isConnected():
             self.startClient()
 
-	self.popup.setWindowTitle(" ")
+	self.popup.setWindowTitle("yRouter discovery")
 
-	tempList = ServerAPI().Check()
-	tempList.sort(key=lambda YunEntity: YunEntity.ID)
+	tempList = self.wgini_client.Check()
+	scene = self.canvas.scene()
 
 	found = 0
 	removed = 0
-	# add yRouters to lists; assume all lists of yRouters are sorted
-	i = 0
+	for yid, yun in yRouters.iteritems():
+	    if yun not in tempList:
+		for index, used in usedyRouters.iteritems():
+		    if used['ID'] == yun['ID']:
+			self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %index)
+			#self.popup.setText("yRouter_%d is no longer available. Please remove from the topology before attempting to discover new yRouters." %index)
+			self.popup.show()
+			#return
+			yRouter = scene.findItem(self.device_type + "_%d" % index)
+			yRouter.delete()
+			del usedyRouters[index]
+			break
+		del yRouters[yid]
+		removed += 1	
+		
 	for yun in tempList:
-	    if len(yRouters) < (i+1):
-		yRouters.append(yun)
+	    if yun['ID'] not in yRouters.keys():
+		yRouters[yun['ID']] = yun
 		availableyRouters.append(yun)
 		found += 1
-	    else:
-		if yun.ID > yRouters[i].ID:
-		    if yRouters[i] in usedyRouters:
-			self.popup.setText("yRouter_%d is no longer available. Please stop the topology before attempting to discover new yRouters." %(yRouters[i].ID))
-			self.popup.show()
-			return
-			# TODO: instead, delete Node from topology, then from usedyRouters and yRouters lists
-			# removed += 1
-		    else:
-			availableyRouters.remove(i)
-			yRouters.remove(i)
-			removed += 1
-		elif yun.ID < yRouters[i].ID:
-		    yRouters.insert(yun, i)
-		    where = 0
-		    for yRouter in availableyRouters:
-			if yRouter.ID >= yRouters[i].ID:
-			    break
-			else:
-			    where += 1
-		    availableyRouters.insert(yun, where)
-		    found += 1
-	    i += 1
-	tempList = []
 
-	# TODO: accept ifconfig parameters and attach to correct yRouter
-	# y = 0
-	# for yRouter in yRouters:
-	    # "ifconfig add tun0 -dstip dst-ip -dstport portnum -addr IP_addr -hwaddr MAC
-	    # yRouter.append("ifconfig add tun0 -dstip 192.168.0.%d -dstport 0 -addr 0.0.0.0 -hwaddr fe:fd:01:0%d:00:00" %(y, y))
-	    # y+=1
-	
+	del tempList
+	availableyRouters.sort(key=lambda YunEntity: YunEntity['ID'])
+
         if found == 0 and removed == 0:
-	    self.popup.setText("No yRouters found or removed.")
-	    self.popup.show()
+	    text = ("No yRouters found or removed.")
 	else:
-	    if found == 0:
-		text = "No yRouters found.\n"
+	    if found == 1:
+		text = "1 yRouter found,"
 	    else:
-		text = "%d yRouters found.\n" %found
-	    if removed == 0:
-		text += "No yRouters removed."
+		text = "%d yRouters found," %found
+	    if removed == 1:
+		text += "1 yRouter removed." %removed
 	    else:
 		text += "%d yRouters removed." %removed
-	    self.popup.setText(text)
-	    self.popup.show()
 
             if mainWidgets["drop"].commonDropArea.yRouterDrop is not None:
                 mainWidgets["drop"].commonDropArea.yRouterDrop.update()
             if mainWidgets["drop"].netDropArea.yRouterDrop is not None:
                 mainWidgets["drop"].netDropArea.yRouterDrop.update()
 
-	return
+	self.log.append(text)
 
     def arrange(self):
         """
@@ -929,6 +946,11 @@ class MainWindow(Systray):
         self.copyAct.setShortcut(self.tr("Ctrl+C"))
         self.copyAct.setStatusTip(self.tr("Copy the selected text"))
         self.connect(self.copyAct, QtCore.SIGNAL("triggered()"), self.copy)
+
+	self.startWGINIServerAct = QtGui.QAction(QtGui.QIcon(environ["images"] + "startServer.png"), self.tr("&Start WGINI Server"), self)
+	self.startWGINIServerAct.setShortcut(self.tr("Ctrl+W"))
+	self.startWGINIServerAct.setStatusTip(self.tr("Start wireless GINI server"))
+	self.connect(self.startWGINIServerAct, QtCore.SIGNAL("triggered()"), self.startWGINIServer)
 
 	self.discoverAct = QtGui.QAction(QtGui.QIcon(environ["images"] + "discover.png"), self.tr("&Discover"), self)
 	self.discoverAct.setShortcut(self.tr("Ctrl+Shift+Y"))
@@ -1039,6 +1061,7 @@ class MainWindow(Systray):
 
         self.runMenu = self.menuBar().addMenu(self.tr("&Run"))
         self.runMenu.setPalette(defaultOptions["palette"])
+	self.runMenu.addAction(self.startWGINIServerAct)
 	self.runMenu.addAction(self.discoverAct)
         self.runMenu.addAction(self.compileAct)
         self.runMenu.addAction(self.runAct)
@@ -1084,6 +1107,7 @@ class MainWindow(Systray):
         self.editToolBar.addAction(self.expandSceneAct)
 
         self.runToolBar = self.addToolBar(self.tr("Run"))
+	self.runToolBar.addAction(self.startWGINIServerAct)
 	self.runToolBar.addAction(self.discoverAct)
         self.runToolBar.addAction(self.compileAct)
         self.runToolBar.addAction(self.runAct)
@@ -1198,11 +1222,16 @@ class MainWindow(Systray):
         """
         self.exportWindow = ExportWindow(self)
         self.sendWindow = SendDirectoryWindow(self)
-        
-        self.popup = QtGui.QMessageBox(self)
+	
+	self.popup = QtGui.QMessageBox(self)
         self.popup.setIcon(QtGui.QMessageBox.Warning)
         self.popup.setWindowIcon(QtGui.QIcon(environ["images"]+"giniLogo.png"))
         mainWidgets["popup"] = self.popup
+
+	# specific dialog for client IP and port input
+	self.inputDialog = QtGui.QInputDialog(self)
+	self.inputDialog.setWindowIcon(QtGui.QIcon(environ["images"]+"giniLogo.png"))
+	mainWidgets["dialog"] = self.inputDialog
 
     def keyPressEvent(self, event):
         """
@@ -1236,7 +1265,7 @@ class MainWindow(Systray):
       if self.server != None:
         self.server.kill()
 
-        
+
 class DebugWindow(QtGui.QWidget):
     def __init__(self, parent):
         QtGui.QWidget.__init__(self)
@@ -1283,6 +1312,4 @@ class DebugWindow(QtGui.QWidget):
 
         if isinstance(canvas, Tutorial):
             canvas.next()
-        
 
-    

@@ -2,7 +2,7 @@
 
 from PyQt4 import QtCore, QtGui
 from Node import *
-from Core.globals import options, mainWidgets
+from Core.globals import options, mainWidgets, yRouters
 from Core.Connection import *
 from Core.Wireless_Connection import *
 
@@ -193,9 +193,8 @@ class View(QtGui.QGraphicsView):
                             if len(dest.edges()) == 1:
                                 return "REALM cannot have more than one connection!"
 			elif dest.device_type == "yRouter" and source.device_type == "Subnet":
-			    yid = int(dest.getName().split("_")[-1])
-			    yRouter = next((y for y in usedyRouters if y.ID == yid), None)
-			    if not yRouter.Special:
+			    yid = dest.getID()
+			    if not yRouters[yid]['Special']:
 				return "Cannot connect yRouter_%d to the host!" %yid
                         elif dest.device_type == "Subnet":
                             if len(dest.edges()) == 2:
@@ -208,9 +207,8 @@ class View(QtGui.QGraphicsView):
                                     if edge.getOtherDevice(source).device_type == "Subnet":
                                         return "Switch cannot have more than one Subnet!"
 			    elif source.device_type == "yRouter":
-				yid = int(source.getName().split("_")[-1])
-				yRouter = next((y for y in usedyRouters if y.ID == yid), None)				
-				if not yRouter.Special:
+				yid = source.getID()
+				if not yRouters[yid]['Special']:
 				    return "yRouter_%d cannot connect to the host!" %yid
                         return True
                     return False
