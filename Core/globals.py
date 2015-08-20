@@ -27,7 +27,7 @@ options = {"names":True,
            "autorouting":True, "autogen":True, "autocompile":True,
            "graphing":True, "username":"",
            "server":"localhost", "session":"GINI", "autoconnect":True,
-           "localPort":"10001", "remotePort":"10000",
+           "localPort":"10001", "remotePort":"10000", "wclientIP":None,
            "restore":True,
            "moveAlert":True}
 
@@ -43,7 +43,8 @@ mainWidgets = {"app":None,
                "interfaces":None,
                "routes":None,
                "drop":None,
-               "client":None}
+               "client":None,
+	       "wgini_client":None}
 
 defaultOptions = {"palette":None}
 

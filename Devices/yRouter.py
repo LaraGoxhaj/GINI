@@ -14,7 +14,7 @@ class yRouter(Router):
         self.next_interface_number=0
 
         # by default, auto compute routing table is off
-        self.auto=0
+        #self.auto=0
 
         self.interfaces.append({
             QtCore.QString("subnet"):QtCore.QString(""),

@@ -466,48 +466,6 @@ class MainWindow(Systray):
             self.statusBar().showMessage(self.tr("Compile failed"), 2000)
             return False
 
-    def generateTSF(self):
-	"""
-	Generate TSF file string to create virtual mesh network.
-	"""
-	tsfString = "<VN>\n"
-
-	for yid, yun in usedyRouters.iteritems():
-	    tsfString += "\t<Station>\n"
-	    tsfString += "\t\t<ID>%d</ID>\n" %yid
-
-	    for interface in tunInterface:
-		tsfString += "\t\t<TunInterface>\n"
-		tsfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %interfaceno
-		tsfString += "\t\t\t<DestStaID>%d</DestStaID>\n" %deststaid
-		tsfString += "\t\t\t<IPAddress>192.168.0.%d</IPAddress>\n" %yid
-		tsfString += "\t\t\t<HWAddress>1a:1a:1a:1a:1a:10</HWAddress>\n"
-
-		for rentry in rentries:
-		    tsfString += "\t\t\t<REntry>\n"
-		    tsfString += "\t\t\t\t<Net>192.168.0.0</Net>\n"
-		    tsfString += "\t\t\t\t<NetMask>255.255.255.0</NetMask>\n"
-		    tsfString += "\t\t\t\t<NextHop>192.168.%d.%d</NextHop>\n" %(0,0)
-		    tsfString += "\t\t\t</REntry>\n"	
-
-		tsfString += "\t\t</TunInterface>\n"
-
-		tsfString += "\t\t<WlanInterface>\n"
-		tsfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" $interfaceno
-		tsfString += "\t\t\t<IPAddress>192.168.%d.%d</IPAddress>\n" %(0,0)
-		tsfString += "\t\t\t<SSID>%s</SSID>\n" %"MyWirelessVN"
-                tsfString += "\t\t\t<REntry>\n"
-                tsfString += "\t\t\t\t<Net>192.168.%d.%d</Net>\n" %(0,0)
-                tsfString += "\t\t\t\t<NetMask>255.255.255.0</NetMask>\n"
-                tsfString += "\t\t\t\t<NextHop>None</NextHop>\n" %0
-                tsfString += "\t\t\t</REntry>\n"
-		tsfString += "\t\t</WlanInterface>\n"
-
-	    tsfString += "\t</Station>\n"
-
-	tsfString += "</VN>"
-	return tsfString
-
     def run(self):
         """
         Run the current topology.
@@ -533,10 +491,6 @@ class MainWindow(Systray):
             self.log.append("Please create or load a topology first!")
             return
 
-	if any(item.device_type == "yRouter" for item in items):
-	    tsfString = self.generateTSF()
-	    self.wgini_client.Create(self.clientIP, tsfString)
-
         options["elasticMode"] = False
 
         xmlFile = self.filename.replace(".gsav", ".xml")
@@ -557,12 +511,6 @@ class MainWindow(Systray):
                 y = item.pos().y()
                 self.client.send("mobile %s %d,%d" % (item.getName(), x, y))
         self.client.process("start " + xmlFile)
-
-	if any(item.device_type == "yRouter" for item in items):
-	    tsfString = self.generateTSF()
-	    status = self.wgini_client.Create(self.clientIP, tsfString)
-	    if not status:
-		self.log.append("Deployment of virtual network on wireless mesh failed!")
 
         self.running = True
         self.canvas.setAcceptDrops(False)
@@ -856,8 +804,10 @@ class MainWindow(Systray):
 			self.popup.setText("Invalid entry; wireless GINI server connection cancelled.")
 		    else:
 			self.clientIP = ipport[0]
+			options["wclientIP"] = self.clientIP
 			self.clientPort = ipport[1]
 			self.wgini_client = wgini_client(self.clientIP, self.clientPort)
+			mainWidgets["wgini_client"] = self.wgini_client
 			self.log.append("Wireless GINI server connected at %s" %text)
     
     def discover(self):
