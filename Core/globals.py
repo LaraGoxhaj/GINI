@@ -27,7 +27,7 @@ options = {"names":True,
            "autorouting":True, "autogen":True, "autocompile":True,
            "graphing":True, "username":"",
            "server":"localhost", "session":"GINI", "autoconnect":True,
-           "localPort":"10001", "remotePort":"10000", "wclientIP":None,
+           "localPort":"10001", "remotePort":"10000",
            "restore":True,
            "moveAlert":True}
 

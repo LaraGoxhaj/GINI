@@ -267,16 +267,18 @@ class Compiler:
         """
         Auto-generate properties for yRouter.
         """
+	# change to router algo!
         for yRouter in self.compile_list["yRouter"]:
-            if options["autogen"]:
-                subnet = yRouter.getInterfaceProperty("subnet")
-                if not subnet:
-                    subnet = "192.168.%d.0" % (256 - yRouter.getID())
-                    yRouter.setInterfaceProperty("subnet", subnet)
-                subnet = str(subnet).rsplit(".", 1)[0]
-                yRouter.setInterfaceProperty("mask", "255.255.255.255.0")
-                yRouter.setInterfaceProperty("ipv4", "%s.%d" % (subnet, yRouter.getID()))
-                yRouter.setInterfaceProperty("mac", "fe:fd:01:%03x:00:00" % yRouter.getID())
+	    i = 0
+	    for con in yRouter.edges():
+		i += 1
+		node = con.getOtherDevice(yRouter)
+		node = node.getTarget(yRouter)
+	
+		if options["autogen"]:
+		    subnet = str(yRouter.getInterfaceProperty("subnet", node)).rsplit(".", 1)[0]
+		    yRouter.setInterfaceProperty("ipv4", "%s.%d" % (subnet, 127 + yRouter.getID()), node)
+		    yRouter.setInterfaceProperty("mac", "fe:fd:05:%02x:00:%02x" % (yRouter.getID(), i), node)
 
     def compile_yRouter(self):
         """
@@ -293,9 +295,7 @@ class Compiler:
 
 	for yRouter in self.compile_list["yRouter"]:
 
-	    interface = yRouter.getInterface()
 #	    mapping = {"subnet":"network", "mac":"nic", "ipv4":"ip"}
-#	    self.writeInterface(yRouter, interface, mapping)
 	    subnet = yRouter.getInterfaceProperty("subnet")
 	    mask = yRouter.getInterfaceProperty("mask")
 
@@ -337,10 +337,10 @@ class Compiler:
 		else: 
 		    itfString += "\t\t<WlanInterface>\n"
 		    itfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %itf
-                    itfString += "\t\t\t<IPAddress>%s</IPAddress>\n" %(node.getProperty("ipv4"))
+                    itfString += "\t\t\t<IPAddress>%s</IPAddress>\n" %str(node.getProperty("ipv4"))
                     itfString += "\t\t\t<SSID>%s</SSID>\n" %"MyWirelessVN"
                     itfString += "\t\t\t<REntry>\n"
-                    itfString += "\t\t\t\t<Net>192.168.%s.0</Net>\n" %(node.getProperty("ipv4").split(".")[-2])
+                    itfString += "\t\t\t\t<Net>192.168.%s.0</Net>\n" %str(node.getProperty("ipv4")).isplit(".")[-2]
                     itfString += "\t\t\t\t<NetMask>255.255.255.0</NetMask>\n"
                     itfString += "\t\t\t\t<NextHop>None</NetMask>\n"
                     itfString += "\t\t\t</REntry>\n"
@@ -353,9 +353,8 @@ class Compiler:
 
         tsfString += "</VN>"
         
-	status = mainWidgets["wgini_client"].Create(options["wclientIP"], tsfString)
-	if not status:
-	    self.log.append("Deployment of virtual network on wireless mesh failed!")
+	status = mainWidgets["wgini_client"].Create(tsfString)
+	self.log.append("Deployment of virtual network on wireless mesh failed!")
 
     def writeInterface(self, device, interface, mapping):
         """

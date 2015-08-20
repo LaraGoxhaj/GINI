@@ -37,8 +37,8 @@ class MainWindow(Systray):
         self.expansions = 0
         self.client = None
         self.server = None
-	self.clientIP = None
-	self.clientPort = None
+	self.wserverIP = None
+	self.wserverPort = None
 	self.wgini_client = None
         self.running = False
         self.recovery = False
@@ -532,12 +532,9 @@ class MainWindow(Systray):
         if not self.client or not self.client.isConnected():
             self.startClient()
 
-	if self.wgini_client is not None:
-	    status = self.wgini_client.Delete(self.clientIP)
-	    if not status:
-		self.log.append("Deletion of virtual network from wireless mesh failed!")
-		return
-	    self.wgini_client = None
+	if (self.wgini_client is not None) and usedyRouters:
+	    status = self.wgini_client.Delete()
+	    self.log.append(status)
 
         if self.recovery:
             self.recovery = False
@@ -782,33 +779,37 @@ class MainWindow(Systray):
         """
         self.configWindow.show()
 
-    def startWGINIServer(self):
+    def startWGINIClient(self):
 	"""
-	Start wireless GINI server
+	Start wireless GINI client
 	"""
 	if not self.server or self.server.poll() is not None:
-	    self.log.append("You must start the main server before you can connect to the wireless server!")
+	    self.log.append("You must start the main server before you can start the wireless client!")
 	elif self.wgini_client is not None:
-	    self.log.append("Wireless GINI server already running!")
+	    self.log.append("Wireless GINI client is already running!")
 	else:
 	    windowTitle = "Client data"
-	    labelText = "Enter your client IP and port number as \"IP:Port\":"
+	    labelText = "Enter wireless Server IP and port number, followed by Client IP, as \"serverIP:serverPort,clientIP\":"
 	    text, ok = self.inputDialog.getText(self.inputDialog, windowTitle, labelText)
 
 	    if ok:
 		if not text:
-		    self.log.append("Nothing entered; wireless GINI server connection cancelled.")
+		    self.log.append("Nothing entered; starting wireless GINI client cancelled.")
 		else:
-		    ipport = text.split(":")
-		    if not(len(ipport) == 2):
-			self.popup.setText("Invalid entry; wireless GINI server connection cancelled.")
-		    else:
-			self.clientIP = ipport[0]
-			options["wclientIP"] = self.clientIP
-			self.clientPort = ipport[1]
-			self.wgini_client = wgini_client(self.clientIP, self.clientPort)
-			mainWidgets["wgini_client"] = self.wgini_client
-			self.log.append("Wireless GINI server connected at %s" %text)
+		    ipportip = text.split(",")
+		    if not (len(ipportip) == 2):
+			self.log.append("Invalid entry, starting wireless GINI client cancelled.")
+		    	return
+		    wserver = ipportip[0].split(":")
+		    if not (len(wserver) == 2):
+			self.log.append("Invalid entry, starting wireless GINI client cancelled.")
+			return
+		    self.wserverIP = str(wserver[0])
+		    self.wserverPort = str(wserver[1])
+		    wclientIP = str(ipportip[1])
+		    self.wgini_client = WGINI_Client(self.wserverIP, self.wserverPort, wclientIP)
+		    mainWidgets["wgini_client"] = self.wgini_client
+		    self.log.append("Wireless GINI client connected at %s" %(ipportip[0]))
     
     def discover(self):
         """
@@ -831,41 +832,45 @@ class MainWindow(Systray):
 	tempList = self.wgini_client.Check()
 	scene = self.canvas.scene()
 
-	found = 0
 	removed = 0
-	for yid, yun in yRouters.iteritems():
+	for yid, yun in usedyRouters.iteritems():
 	    if yun not in tempList:
-		for index, used in usedyRouters.iteritems():
-		    if used['ID'] == yun['ID']:
-			self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %index)
-			#self.popup.setText("yRouter_%d is no longer available. Please remove from the topology before attempting to discover new yRouters." %index)
-			self.popup.show()
-			#return
-			yRouter = scene.findItem(self.device_type + "_%d" % index)
-			yRouter.delete()
-			del usedyRouters[index]
-			break
-		del yRouters[yid]
-		removed += 1	
-		
+	        self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %yid)
+		self.popup.show()
+		yRouter = scene.findItem(self.device_type + "_%d" %yid)
+		yRouter.delete()
+		del usedyRouters[yid]
+
+	found = 0
+	updated = 0
 	for yun in tempList:
-	    if yun['ID'] not in yRouters.keys():
+	    if (yun['ID'] not in yRouters.keys()):
 		yRouters[yun['ID']] = yun
 		availableyRouters.append(yun)
 		found += 1
+	    else:
+		if not yRouters[yun['ID']] == yun:
+		    yRouters[yun['ID']] = yun
+		    yRouter = (y for y in availableyRouters if y['ID'] == yun['ID'])
+		    availableyRouters.remove(yRouter)
+		    availableyRouters.append(yun)
+		    updated +=1 
 
-	del tempList
 	availableyRouters.sort(key=lambda YunEntity: YunEntity['ID'])
 
-        if found == 0 and removed == 0:
-	    text = ("No yRouters found or removed.")
+        if found == 0 and updated == 0 and removed == 0:
+	    text = "No yRouters found, updated, or removed."
 	else:
-	    if found == 1:
-		text = "1 yRouter found,"
+	    if found == 0:
+		text = "No yRouters found, "
 	    else:
-		text = "%d yRouters found," %found
-	    if removed == 1:
-		text += "1 yRouter removed." %removed
+		text = "%d yRouters found, " %found
+	    if updated == 0:
+		text += "No yRouters updated, "
+	    else:
+		text += "%d yRouters updated, " %updated
+	    if removed == 0:
+		text += "No yRouters removed."
 	    else:
 		text += "%d yRouters removed." %removed
 
@@ -946,10 +951,10 @@ class MainWindow(Systray):
         self.copyAct.setStatusTip(self.tr("Copy the selected text"))
         self.connect(self.copyAct, QtCore.SIGNAL("triggered()"), self.copy)
 
-	self.startWGINIServerAct = QtGui.QAction(QtGui.QIcon(environ["images"] + "startServer.png"), self.tr("&Start WGINI Server"), self)
-	self.startWGINIServerAct.setShortcut(self.tr("Ctrl+W"))
-	self.startWGINIServerAct.setStatusTip(self.tr("Start wireless GINI server"))
-	self.connect(self.startWGINIServerAct, QtCore.SIGNAL("triggered()"), self.startWGINIServer)
+	self.startWGINIClientAct = QtGui.QAction(QtGui.QIcon(environ["images"] + "startServer.png"), self.tr("&Start WGINI Client"), self)
+	self.startWGINIClientAct.setShortcut(self.tr("Ctrl+W"))
+	self.startWGINIClientAct.setStatusTip(self.tr("Start wireless GINI client"))
+	self.connect(self.startWGINIClientAct, QtCore.SIGNAL("triggered()"), self.startWGINIClient)
 
 	self.discoverAct = QtGui.QAction(QtGui.QIcon(environ["images"] + "discover.png"), self.tr("&Discover"), self)
 	self.discoverAct.setShortcut(self.tr("Ctrl+Shift+Y"))
@@ -1060,7 +1065,7 @@ class MainWindow(Systray):
 
         self.runMenu = self.menuBar().addMenu(self.tr("&Run"))
         self.runMenu.setPalette(defaultOptions["palette"])
-	self.runMenu.addAction(self.startWGINIServerAct)
+	self.runMenu.addAction(self.startWGINIClientAct)
 	self.runMenu.addAction(self.discoverAct)
         self.runMenu.addAction(self.compileAct)
         self.runMenu.addAction(self.runAct)
@@ -1106,7 +1111,7 @@ class MainWindow(Systray):
         self.editToolBar.addAction(self.expandSceneAct)
 
         self.runToolBar = self.addToolBar(self.tr("Run"))
-	self.runToolBar.addAction(self.startWGINIServerAct)
+	self.runToolBar.addAction(self.startWGINIClientAct)
 	self.runToolBar.addAction(self.discoverAct)
         self.runToolBar.addAction(self.compileAct)
         self.runToolBar.addAction(self.runAct)
