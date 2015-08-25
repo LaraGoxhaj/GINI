@@ -69,7 +69,7 @@ class Compiler:
         if options["autorouting"]:
             self.routing_table_router()
             #self.routing_table_wireless_access_point()
-	    #self.routing_table_yRouter()
+	    self.routing_table_yRouter()
             self.routing_table_entry()
             self.routing_table_uml()
             #self.routing_table_mobile()
@@ -267,7 +267,6 @@ class Compiler:
         """
         Auto-generate properties for yRouter.
         """
-	# change to router algo!
         for yRouter in self.compile_list["yRouter"]:
 	    i = 0
 	    for con in yRouter.edges():
@@ -277,8 +276,10 @@ class Compiler:
 	
 		if options["autogen"]:
 		    subnet = str(yRouter.getInterfaceProperty("subnet", node)).rsplit(".", 1)[0]
-		    yRouter.setInterfaceProperty("ipv4", "%s.%d" % (subnet, 127 + yRouter.getID()), node)
+		    yRouter.setInterfaceProperty("ipv4", "%s.%d" % (subnet, yRouter.getID()), node)
 		    yRouter.setInterfaceProperty("mac", "fe:fd:05:%02x:00:%02x" % (yRouter.getID(), i), node)
+		    if not yRouter.getInterfaceProperty("SSID"):
+			yRouter.setInterfaceProperty("SSID", "MyWirelessVN", node)
 
     def compile_yRouter(self):
         """
@@ -294,11 +295,11 @@ class Compiler:
         tsfString = "<VN>\n"
 
 	for yRouter in self.compile_list["yRouter"]:
-
-#	    mapping = {"subnet":"network", "mac":"nic", "ipv4":"ip"}
-	    subnet = yRouter.getInterfaceProperty("subnet")
-	    mask = yRouter.getInterfaceProperty("mask")
-
+	    subnet = yRouter.getInterfaceProperty("subnet").toString()
+	    mask = yRouter.getInterfaceProperty("mask").toString()
+	    mac = yRouter.getInterfaceProperty("mac").toString()
+	    SSID = yRouter.getInterfaceProperty("SSID").toString()
+	    ip = yRouter.getInterfaceProperty("ipv4").toString()
 	    yid = yRouter.getID()
 
             tsfString += "\t<Station>\n"
@@ -306,45 +307,55 @@ class Compiler:
 
 	    itf = -1
 	    for tun in yRouter.edges():
-		itfString = ""
-		itf += 1
+		tsfString = ""
+		tsf += 1
 		node = tun.getOtherDevice(yRouter)
 		node.setInterfaceProperty("subnet", subnet, yRouter)
 		node.setInterfaceProperty("mask", mask, yRouter)
 
-		if node.device_type == "yRouter":
-                    itfString += "\t\t<TunInterface>\n"
-                    itfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %itf
-                    itfString += "\t\t\t<DestStaID>%d</DestStaID>\n" %node.getID()
-                    itfString += "\t\t\t<IPAddress>192.168.0.%d</IPAddress>\n" %yid
-                    itfString += "\t\t\t<HWAddress>1a:1a:1a:1a:1a:10</HWAddress>\n"
+          	# device is mesh portal to virtual topology
+		if node.device_type == "Router":
+		    strOpen = "\t\t<BBInterface>\n"
+		    dest = "\t\t\t<DestIface>%d</DestIface>\n" %node.getID()
+		    strClose = "\t\t</BBInterface>\n"
+		else:
+		    strOpen = "\t\t<TunInterface>\n"
+		    dest = "\t\t\t<DestStaID>%d</DestStaID>\n" %node.getID()
+		    strClose = "\t\t</TunInterface>\n"
 
-		    for rnode in node.edges():
-			rentry = rnode.getOtherDevice(node)
+		itfString += strOpen
+		itfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %itf
+                itfString += dest
+                itfString += "\t\t\t<IPAddress>%s</IPAddress>\n" %ip
+                itfString += "\t\t\t<HWAddress>%s</HWAddress>\n" %mac
 
-			if rentry.device_type == "Router":
-			    nexthop = "None"
-			else:
-			    nexthop = "192.168.0.%d" %node.getID()
-			itfString += "\t\t\t<REntry>\n"
-			itfString += "\t\t\t\t<Net>192.168.0.0</Net>\n"
-			itfString += "\t\t\t\t<NetMask>255.255.255.0</NetMask>\n"
-			itfString += "\t\t\t\t<NextHop>None</NetMask>\n"
-			itfString += "\t\t\t</REntry>\n"
+		#TODO
+                for rnode in node.edges():
+                    rentry = rnode.getOtherDevice(node)
 
-		    itfString += "\t\t</TunInterface>\n"
-
-		else: 
-		    itfString += "\t\t<WlanInterface>\n"
-		    itfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %itf
-                    itfString += "\t\t\t<IPAddress>%s</IPAddress>\n" %str(node.getProperty("ipv4"))
-                    itfString += "\t\t\t<SSID>%s</SSID>\n" %"MyWirelessVN"
+                    if rentry.device_type == "Router":
+                        nextHop = "None"
+                    else:
+			nextHop = "192.168.0.%d" %node.getID()
                     itfString += "\t\t\t<REntry>\n"
-                    itfString += "\t\t\t\t<Net>192.168.%s.0</Net>\n" %str(node.getProperty("ipv4")).isplit(".")[-2]
-                    itfString += "\t\t\t\t<NetMask>255.255.255.0</NetMask>\n"
-                    itfString += "\t\t\t\t<NextHop>None</NetMask>\n"
+                    itfString += "\t\t\t\t<Net>192.168.0.0</Net>\n"
+                    itfString += "\t\t\t\t<NetMask>%s</NetMask>\n" %mask
+                    itfString += "\t\t\t\t<NextHop>%s</NetHop>\n" %nextHop
                     itfString += "\t\t\t</REntry>\n"
-		    itfString += "\t\t</WlanInterface>\n"
+
+                itfString += strClose
+
+		itfString += "\t\t<WlanInterface>\n"
+		itfString += "\t\t\t<InterfaceNo>%d</InterfaceNo>\n" %itf
+                itfString += "\t\t\t<IPAddress>%s</IPAddress>\n" %ip
+                itfString += "\t\t\t<SSID>%s</SSID>\n" %SSID
+		#TODO
+                itfString += "\t\t\t<REntry>\n"
+                itfString += "\t\t\t\t<Net>192.168.%s.0</Net>\n" %str(node.getProperty("ipv4")).isplit(".")[-2]
+                itfString += "\t\t\t\t<NetMask>%s</NetMask>\n" %mask
+                itfString += "\t\t\t\t<NextHop>None</NetMask>\n"
+                itfString += "\t\t\t</REntry>\n"
+		itfString += "\t\t</WlanInterface>\n"
 
 		tsfString += itfString
 		itfString = ""

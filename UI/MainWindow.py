@@ -834,17 +834,29 @@ class MainWindow(Systray):
 
 	removed = 0
 	for yid, yun in usedyRouters.iteritems():
-	    if yun not in tempList:
+	    if (yun not in tempList) or (yun in tempList and ((yun['MaxRaw'] - yun['CurrRaw']) == 0)):
 	        self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %yid)
 		self.popup.show()
 		yRouter = scene.findItem(self.device_type + "_%d" %yid)
 		yRouter.delete()
 		del usedyRouters[yid]
+		removed += 1
 
 	found = 0
 	updated = 0
 	for yun in tempList:
-	    if (yun['ID'] not in yRouters.keys()):
+	    openYun = yun['MaxRaw'] - yun['CurrRaw']
+	    if ((yun['MaxRaw'] - yun['CurrRaw']) == 0):
+		if yun['ID'] in usedyRouters.keys():
+		    self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %yun['ID'])
+		    self.popup.show()
+		    yRouter = scene.findItem(self.device_type + "_%d" %yun['ID'])
+		    yRouter.delete()
+		    del usedyRouters[yun['ID']]
+		    removed += 1
+		else:
+		    continue
+	    elif (yun['ID'] not in yRouters.keys()):
 		yRouters[yun['ID']] = yun
 		availableyRouters.append(yun)
 		found += 1

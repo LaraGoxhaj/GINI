@@ -5,21 +5,25 @@ class yRouter(Router):
     device_type="yRouter"
 
     def __init__(self):
-        Device.__init__(self)
+        #Device.__init__(self)
+	Interfaceable.__init__(self)
 
-        self.interface = []
-        self.num_interface=0
-        self.connection=[]
-        self.con_int={}                         # the connection and interface pair connection
-        self.next_interface_number=0
+#        self.interface = []
+#        self.num_interface=0
+#        self.connection=[]
+#	self.wireless_con_list=[]
+#        self.next_interface_number=0
 
         # by default, auto compute routing table is off
         #self.auto=0
 
+	self.properties[QtCore.QString("mac_type")]="MAC 802.11 DCF"
+	self.properties[QtCore.QString("SSID")]=""
+
         self.interfaces.append({
             QtCore.QString("subnet"):QtCore.QString(""),
             QtCore.QString("mask"):QtCore.QString(""),
-            QtCore.QString("ipv4"):QtCore.QString(""),
+            QtCore.QString("ipv4"):QtCore.QString("192.168.0.%d" %self.getID()),
             QtCore.QString("mac"):QtCore.QString(""),
             QtCore.QString("routing"):[]})
 

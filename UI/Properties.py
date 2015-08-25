@@ -12,7 +12,7 @@ class ConnectM():
         self.ip=ip
         self.mac=mac
         self.port=port
-        alist={"m1":ConnectM("m1","ip1","mac1","port1"),"m2":ConnectM("m1","ip2","ma     c2","port2")}
+        alist={"m1":ConnectM("m1","ip1","mac1","port1"),"m2":ConnectM("m1","ip2","mac2","port2")}
 
 
 class PropertyCheckBox(QtGui.QCheckBox):
@@ -111,9 +111,9 @@ class PropertiesWindow(Dockable):
                 
             popup = mainWidgets["popup"]
             popup.setWindowTitle("Invalid Name Change")
-            popup.setText("Only the index of the name can be changed!  The index must be unique and in the range 1-126.")
+            popup.setText("Only the index of the name can be changed! The index must be unique and in the range 1-126.")
             popup.show()
-        else:
+	else:
             self.currentItem.setProperty(prop.toString(), value.toString())
         
     def dockChanged(self, floating):
@@ -279,6 +279,9 @@ class InterfacesWindow(PropertiesWindow):
         #interfaces = self.currentItem.getInterfaces()
         #interfaces[self.currentInterface - 1][prop.toString()] = value.toString()
         self.currentItem.setInterfaceProperty(prop.toString(), value.toString(), index=self.currentInterface - 1)
+
+	if prop.toString() == "SSID":
+	    # TODO: set SSID for all interfaces of currentItem (yRouter), and all interfaces of all other yRouters
 
     def clear(self):
         """
