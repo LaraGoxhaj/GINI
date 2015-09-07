@@ -192,17 +192,31 @@ class View(QtGui.QGraphicsView):
                         elif dest.device_type == "REALM":
                             if len(dest.edges()) == 1:
                                 return "REALM cannot have more than one connection!"
-			elif dest.device_type == "yRouter" and source.device_type == "Router":
+			elif dest.device_type == "yRouter":
+			    target = source.getTarget(dest)
 			    yid = dest.getID()
-			    if not yRouters[yid]['Special']:
-				return "Cannot connect yRouter_%d to the host!" %yid
-			elif dest.device_type == "Router" and source.device_type == "yRouter":
-			    yid = source.getID()
-			    if not yRouters[yid]['Special']:
-				return "yRouter_%d cannot connect to the host!" %yid
+			    if target is not None and target.device_type == "Router" and not yRouters[yid]['IsPortal']:
+				return "yRouter_%d is not a portal and cannot connect to the host!" %yid
+			elif dest.device_type == "Router":
+			    target = source.getTarget(dest)
+			    if target is not None and target.device_type == "yRouter":
+				yid = target.getID()
+				if not yRouters[yid]['IsPortal']:
+				    return "Cannot connect yRouter_%d to the host (not a portal)!" %yid
                         elif dest.device_type == "Subnet":
                             if len(dest.edges()) == 2:
-                                return "Subnet cannot have more than two connections!"    
+                                return "Subnet cannot have more than two connections!"
+			    if source.device_type == "yRouter":
+				target = dest.getTarget(source)
+				yid = source.getID()
+				if target is not None and target.device_type == "Router" and not yRouters[yid]['IsPortal']:
+				    return "yRouter_%d is not a portal and cannot connect to the host!" %yid
+			    if source.device_type == "Router":
+				target = dest.getTarget(source)
+				if target is not None and target.device_type == "yRouter":
+				    yid = target.getID()
+				    if not yRouters[yid]['IsPortal']:
+					return "Cannot connect yRouter_%d to the host (not a portal)!" %yid
                             if source.device_type == "Switch":
                                 for edge in dest.edges():
                                     if edge.getOtherDevice(dest).device_type == "Switch":

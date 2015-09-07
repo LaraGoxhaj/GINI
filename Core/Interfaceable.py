@@ -37,8 +37,6 @@ class Interfaceable(Device):
         screen = " screen -r "
         if self.device_type == "Wireless_access_point":
             screen += "WAP_%d" % self.getID()
-        elif self.device_type == "yRouter":
-	    screen += "yRouter_%d" % self.getID()
 	else:
             name = self.getName()
             pid = mainWidgets["tm"].getPID(name)
@@ -82,7 +80,7 @@ class Interfaceable(Device):
         for interface in self.interfaces:
             if interface[QtCore.QString("target")] == node:
                 return         
-        
+
         self.interfaces.append({
             QtCore.QString("target"):node,
             QtCore.QString("ipv4"):QtCore.QString(""),

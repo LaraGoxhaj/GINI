@@ -142,3 +142,11 @@ class WGINI_Server:
 			run_yrouter(interfaces, Station.ID)
 
 		return "Create: Topology %d deployed" %TopID
+
+
+# for testing
+ServerIP = "localhost"
+ServerPort = 50000
+
+wginiserver = WGINI_Server(ServerIP, ServerPort)
+wginiserver.StartServer()

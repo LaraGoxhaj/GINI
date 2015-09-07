@@ -731,7 +731,9 @@ class MainWindow(Systray):
         """
         Save a topology.
         """
-        if not self.canvas.scene().items():
+	scene = self.canvas.scene()
+
+        if not scene.items():
             self.log.append("There is nothing to save!")
             return False
 
@@ -750,7 +752,6 @@ class MainWindow(Systray):
         out = QtCore.QTextStream(file)
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
-        scene = self.canvas.scene()
         outstring = ""
         for item in scene.items():
             if isinstance(item, Node):
@@ -807,9 +808,12 @@ class MainWindow(Systray):
 		    self.wserverIP = str(wserver[0])
 		    self.wserverPort = str(wserver[1])
 		    wclientIP = str(ipportip[1])
-		    self.wgini_client = WGINI_Client(self.wserverIP, self.wserverPort, wclientIP)
-		    mainWidgets["wgini_client"] = self.wgini_client
-		    self.log.append("Wireless GINI client connected at %s" %(ipportip[0]))
+		    try:
+			self.wgini_client = WGINI_Client(self.wserverIP, self.wserverPort, wclientIP)
+		    	mainWidgets["wgini_client"] = self.wgini_client
+		    	self.log.append("Wireless GINI client connected at %s" %(ipportip[0]))
+		    except:
+			self.log.append("Starting wireless GINI client failed.")
     
     def discover(self):
         """
@@ -834,7 +838,7 @@ class MainWindow(Systray):
 
 	removed = 0
 	for yid, yun in usedyRouters.iteritems():
-	    if (yun not in tempList) or (yun in tempList and ((yun['MaxRaw'] - yun['CurrRaw']) == 0)):
+	    if (yun not in tempList) or (yun in tempList and ((yun['MaxWlan'] - yun['CurrWlan']) == 0)):
 	        self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %yid)
 		self.popup.show()
 		yRouter = scene.findItem(self.device_type + "_%d" %yid)
@@ -845,8 +849,8 @@ class MainWindow(Systray):
 	found = 0
 	updated = 0
 	for yun in tempList:
-	    openYun = yun['MaxRaw'] - yun['CurrRaw']
-	    if ((yun['MaxRaw'] - yun['CurrRaw']) == 0):
+	    openYun = yun['MaxWlan'] - yun['CurrWlan']
+	    if ((yun['MaxWlan'] - yun['CurrWlan']) == 0):
 		if yun['ID'] in usedyRouters.keys():
 		    self.popup.setText("yRouter_%d is no longer available. It will be removed from the topology." %yun['ID'])
 		    self.popup.show()
@@ -878,11 +882,11 @@ class MainWindow(Systray):
 	    else:
 		text = "%d yRouters found, " %found
 	    if updated == 0:
-		text += "No yRouters updated, "
+		text += "no yRouters updated, "
 	    else:
 		text += "%d yRouters updated, " %updated
 	    if removed == 0:
-		text += "No yRouters removed."
+		text += "no yRouters removed."
 	    else:
 		text += "%d yRouters removed." %removed
 

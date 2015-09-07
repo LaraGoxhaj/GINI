@@ -99,9 +99,9 @@ class PropertiesWindow(Dockable):
         prop = self.model.data(propertyIndex)
         if prop.toString() == "id":
             name = str(value.toString())
-            if name.find(self.currentItem.device_type + "_") == 0:
+	    devType, index = name.rsplit("_", 1)
+            if not devType == "yRouter" and name.find(self.currentItem.device_type + "_") == 0:
                 try:
-                    devType, index = name.rsplit("_", 1)
                     index = int(index)
                     if index - 1 in range(126) and mainWidgets["canvas"].scene().findItem(name) == None:
                         self.currentItem.setIndex(index)
@@ -111,7 +111,10 @@ class PropertiesWindow(Dockable):
                 
             popup = mainWidgets["popup"]
             popup.setWindowTitle("Invalid Name Change")
-            popup.setText("Only the index of the name can be changed! The index must be unique and in the range 1-126.")
+	    if devType == "yRouter":
+		popup.setText("Cannot change the index of a yRouter!")
+	    else:
+                popup.setText("Only the index of the name can be changed! The index must be unique and in the range 1-126.")
             popup.show()
 	else:
             self.currentItem.setProperty(prop.toString(), value.toString())
@@ -141,7 +144,7 @@ class PropertiesWindow(Dockable):
             editable = True
             checkable = False
             combo = False
-            if prop == "Hub mode":
+            if prop in ["Hub mode", "WLAN"]:
                 checkable = True
             elif prop == "Hosts":
                 combo = True
@@ -266,7 +269,7 @@ class InterfacesWindow(PropertiesWindow):
         self.currentInterface += inc
         interface = interfaces[self.currentInterface-1]
         self.setWindowTitle("Interface %d" % self.currentInterface)
-        for prop, value in interface.iteritems():
+	for prop, value in interface.iteritems():
             self.addProperty(prop, value)
 
     def changed(self, index, index2):
@@ -279,9 +282,6 @@ class InterfacesWindow(PropertiesWindow):
         #interfaces = self.currentItem.getInterfaces()
         #interfaces[self.currentInterface - 1][prop.toString()] = value.toString()
         self.currentItem.setInterfaceProperty(prop.toString(), value.toString(), index=self.currentInterface - 1)
-
-	if prop.toString() == "SSID":
-	    # TODO: set SSID for all interfaces of currentItem (yRouter), and all interfaces of all other yRouters
 
     def clear(self):
         """
