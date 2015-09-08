@@ -195,6 +195,11 @@ class MainWindow(Systray):
         for nodeType in nodeTypes.keys():
             itemTypes = nodeTypes[nodeType]
             itemTypes[nodeType] = 0
+	if usedyRouters:
+	    for yunid, yun in usedyRouers.iterItems():
+		availableyRouters.append(yun)
+		availableyRouters.sort(Key=lambda YunEntity: YunEntity['ID'])
+	    usedyRouters = {}
 
         self.properties.clear()
         self.interfaces.clear()
@@ -669,6 +674,17 @@ class MainWindow(Systray):
         self.filename = str(filename)
 
         _in = QtCore.QTextStream(file)
+
+	yRouters = False
+	if "yRouter" in str(_in.readAll()):
+	    yRouters = True
+	    QtGui.QMessageBox.warning(self, self.tr("Load Warning"), self.tr("This file contains yRouters, which may not be physically available right now. Any yRouters no longer physically available will automatically be removed from the topology."))
+
+	    if not self.wgini_server:
+		if not self.startWGINIClient():
+		    QtGui.QMessageBox.warning(self, self.tr("Load Error"), self.tr("Cannot open file with yRouters without connecting to wireless server."))
+		return	
+
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
         itemDict = {}
@@ -684,8 +700,11 @@ class MainWindow(Systray):
             itemDict[item] = lines
             lines = []
 
-        loadProperties(itemDict)
-        
+	if yRouters:
+	    self.discover()
+
+        loadProperties(itemDict)        
+
         QtGui.QApplication.restoreOverrideCursor()
         
         self.statusBar().showMessage(self.tr("Loaded '%1'").arg(filename), 2000)
@@ -740,6 +759,11 @@ class MainWindow(Systray):
         # for first time use
         if not self.filename:
             return self.saveTopologyAs()
+
+	if usedyRouters:
+	    self.popup.setWindowTitle("Save Warning")
+	    self.popup.setText("This topology contains yRouters, which may not be available when loading the project later.")
+	    self.popup.show()
 
         file = QtCore.QFile(self.filename)
         if not file.open(QtCore.QFile.WriteOnly | QtCore.QFile.Text):
@@ -800,11 +824,11 @@ class MainWindow(Systray):
 		    ipportip = text.split(",")
 		    if not (len(ipportip) == 2):
 			self.log.append("Invalid entry, starting wireless GINI client cancelled.")
-		    	return
+		    	return False
 		    wserver = ipportip[0].split(":")
 		    if not (len(wserver) == 2):
 			self.log.append("Invalid entry, starting wireless GINI client cancelled.")
-			return
+			return False
 		    self.wserverIP = str(wserver[0])
 		    self.wserverPort = str(wserver[1])
 		    wclientIP = str(ipportip[1])
@@ -812,22 +836,30 @@ class MainWindow(Systray):
 			self.wgini_client = WGINI_Client(self.wserverIP, self.wserverPort, wclientIP)
 		    	mainWidgets["wgini_client"] = self.wgini_client
 		    	self.log.append("Wireless GINI client connected at %s" %(ipportip[0]))
+			return True
 		    except:
 			self.log.append("Starting wireless GINI client failed.")
+			return False
+	    else:
+		return False
     
     def discover(self):
         """
         Add yRouters within range of topology
         """
 	if self.wgini_client is None:
-	    self.log.append("You must start the wireless server before you can discover any new devices!")
-	    return
+	    self.log.append("You must connect to the wireless server before you can discover any new devices!")
+	    if not self.startWGINIClient():
+		return
+
         if self.isRunning() and not self.recovery:
             self.log.append("A topology is currently running, please stop it before discovering any new devices!")
             return
+
         if isinstance(mainWidgets["canvas"], Tutorial):
             self.log.append("You cannot discover any new devices during this tutorial!")
             return
+
         if not self.client or not self.client.isConnected():
             self.startClient()
 
